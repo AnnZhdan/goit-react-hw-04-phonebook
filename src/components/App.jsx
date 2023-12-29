@@ -1,42 +1,38 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import { MainContainer } from './App.styled';
-
 import { ContactForm } from './ContactForm/ContactForm';
 import { ContactList } from './ContactList/ContactList';
 import { Filter } from './Filter/Filter';
 
 const KEY_LS = 'contacts';
-export class App extends Component {
-  state = {
-    contacts: [
-      { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
-      { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
-      { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
-      { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
-    ],
-    filter: '',
-  };
 
-  componentDidMount = () => {
+const initialContacts = [
+  { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
+  { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
+  { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
+  { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
+];
+
+export const App = () => {
+  const [contacts, setContacts] = useState(() => {
     const initialState = JSON.parse(localStorage.getItem(KEY_LS));
-    if (initialState) {
-      this.setState({ contacts: [...initialState] });
-    }
-  };
+    return initialState || initialContacts;
+  });
 
-  componentDidUpdate = (_, prevState) => {
-    if (prevState.contacts !== this.state.contacts) {
-      localStorage.setItem(KEY_LS, JSON.stringify(this.state.contacts));
-    }
-  };
+  const [filter, setFilter] = useState('');
 
-  onSubmitForm = data => {
+  useEffect(() => {
+    localStorage.setItem(KEY_LS, JSON.stringify(contacts));
+  }, [contacts]);
+
+  const onSubmitForm = data => {
     const obj = { ...data, id: nanoid() };
-    this.setState(({ contacts }) => {
-      if (this.newName(contacts, obj) === undefined) {
-        return { contacts: [...contacts, obj] };
+
+    setContacts(prevContacts => {
+      if (newName(prevContacts, obj) === undefined) {
+        return [...prevContacts, obj];
       } else {
         Notify.warning(`${obj.name} is already in contacts`, {
           width: `300px`,
@@ -44,50 +40,44 @@ export class App extends Component {
           timeout: 2000,
           fontSize: `20px`,
         });
-        return { contacts: [...contacts] };
+        return [...prevContacts];
       }
     });
   };
 
-  newName = (contacts, obj) => {
-    return contacts.find(
+  const newName = (prevContacts, obj) => {
+    return prevContacts.find(
       ({ name }) => name.toLowerCase() === obj.name.toLowerCase()
     );
   };
 
-  removeContact = contactId => {
-    this.setState(({ contacts }) => ({
-      contacts: contacts.filter(contact => contact.id !== contactId),
-    }));
-  };
-  onChangeFilter = evt => {
-    const { value } = evt.currentTarget;
-    this.setState({ filter: value });
+  const removeContact = contactId => {
+    setContacts(prevContacts =>
+      prevContacts.filter(contact => contact.id !== contactId)
+    );
   };
 
-  filterByName = () => {
-    const { contacts, filter } = this.state;
-    const lowerFilter = filter.toLowerCase();
+  const onChangeFilter = evt => {
+    const { value } = evt.currentTarget;
+    setFilter(value);
+  };
+
+  const filterByName = () => {
+    const lowerFilter = filter.toLowerCase().trim();
     return contacts.filter(({ name }) =>
       name.toLowerCase().includes(lowerFilter)
     );
   };
 
-  render() {
-    const { filter } = this.state;
-    const visibleContacts = this.filterByName();
+  const visibleContacts = filterByName();
 
-    return (
-      <MainContainer>
-        <h1>Phonebook</h1>
-        <ContactForm onSubmit={this.onSubmitForm} />
-        <h2>Contacts</h2>
-        <Filter filter={filter} onChangeFilter={this.onChangeFilter} />
-        <ContactList
-          onRemoveContact={this.removeContact}
-          contacts={visibleContacts}
-        />
-      </MainContainer>
-    );
-  }
-}
+  return (
+    <MainContainer>
+      <h1>Phonebook</h1>
+      <ContactForm onSubmit={onSubmitForm} />
+      <h2>Contacts</h2>
+      <Filter filter={filter} onChangeFilter={onChangeFilter} />
+      <ContactList onRemoveContact={removeContact} contacts={visibleContacts} />
+    </MainContainer>
+  );
+};
